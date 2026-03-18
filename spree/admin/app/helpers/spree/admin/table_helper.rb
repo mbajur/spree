@@ -356,7 +356,51 @@ module Spree
         end
       end
 
+      # Generate hidden fields to preserve existing filter params across form submissions.
+      # This ensures that submitting one form (e.g., search) does not wipe out params
+      # set by other forms (e.g., query builder filters, date range picker).
+      #
+      # @param except_q_keys [Array] q param keys to exclude (the ones the current form manages)
+      # @param preserve_query_state [Boolean] whether to preserve the query_state param
+      # @return [String] HTML string of hidden fields
+      def hidden_preserve_filter_params(except_q_keys: [], preserve_query_state: true)
+        tags = []
+
+        if params[:q].present?
+          q_hash = params[:q].respond_to?(:to_unsafe_h) ? params[:q].to_unsafe_h : params[:q].to_h
+          except_strs = except_q_keys.map(&:to_s)
+          filtered_q = q_hash.reject { |k, _| except_strs.include?(k.to_s) }
+          tags << hidden_fields_for_hash(filtered_q, 'q')
+        end
+
+        if preserve_query_state && params[:query_state].present?
+          tags << hidden_field_tag(:query_state, params[:query_state])
+        end
+
+        safe_join(tags)
+      end
+
       private
+
+      # Recursively generate hidden_field_tag calls from a nested hash.
+      # @param hash [Hash] the hash to flatten into hidden fields
+      # @param prefix [String] the param name prefix (e.g., 'q')
+      # @return [String] HTML string of hidden fields
+      def hidden_fields_for_hash(hash, prefix)
+        tags = []
+        hash.each do |key, value|
+          name = "#{prefix}[#{key}]"
+          case value
+          when Hash
+            tags << hidden_fields_for_hash(value, name)
+          when Array
+            value.each { |v| tags << hidden_field_tag("#{name}[]", v) }
+          else
+            tags << hidden_field_tag(name, value)
+          end
+        end
+        safe_join(tags)
+      end
 
       def sort_dropdown_toggle(current_direction, current_label)
         dropdown_toggle(class: 'btn-light btn-sm h-[2.125rem]') do

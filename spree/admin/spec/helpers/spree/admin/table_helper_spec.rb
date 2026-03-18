@@ -546,6 +546,96 @@ RSpec.describe Spree::Admin::TableHelper, type: :helper do
     end
   end
 
+  describe '#hidden_preserve_filter_params' do
+    context 'when there are no params' do
+      before { allow(helper).to receive(:params).and_return(ActionController::Parameters.new({})) }
+
+      it 'returns empty string' do
+        expect(helper.hidden_preserve_filter_params).to eq('')
+      end
+    end
+
+    context 'when q params are present' do
+      before do
+        allow(helper).to receive(:params).and_return(
+          ActionController::Parameters.new(q: { status_eq: 'active', name_cont: 'shirt', s: 'name asc' })
+        )
+      end
+
+      it 'generates hidden fields for all q params by default' do
+        result = helper.hidden_preserve_filter_params
+        expect(result).to include('name="q[status_eq]"')
+        expect(result).to include('value="active"')
+        expect(result).to include('name="q[name_cont]"')
+        expect(result).to include('value="shirt"')
+        expect(result).to include('name="q[s]"')
+        expect(result).to include('value="name asc"')
+      end
+
+      it 'excludes specified q keys' do
+        result = helper.hidden_preserve_filter_params(except_q_keys: [:name_cont])
+        expect(result).to include('name="q[status_eq]"')
+        expect(result).not_to include('name="q[name_cont]"')
+      end
+
+      it 'accepts string keys in except_q_keys' do
+        result = helper.hidden_preserve_filter_params(except_q_keys: ['name_cont'])
+        expect(result).not_to include('name="q[name_cont]"')
+      end
+    end
+
+    context 'when query_state param is present' do
+      let(:query_state) { '{"filters":[{"field":"status","operator":"eq","value":"active"}]}' }
+
+      before do
+        allow(helper).to receive(:params).and_return(
+          ActionController::Parameters.new(query_state: query_state)
+        )
+      end
+
+      it 'includes a hidden field for query_state by default' do
+        result = helper.hidden_preserve_filter_params
+        expect(result).to include('name="query_state"')
+        expect(result).to include(CGI.escapeHTML(query_state))
+      end
+
+      it 'omits query_state when preserve_query_state is false' do
+        result = helper.hidden_preserve_filter_params(preserve_query_state: false)
+        expect(result).not_to include('name="query_state"')
+      end
+    end
+
+    context 'when q params contain nested hash (ransack grouping)' do
+      before do
+        allow(helper).to receive(:params).and_return(
+          ActionController::Parameters.new(q: { g: { '0' => { m: 'or', 'status_eq' => 'active' } } })
+        )
+      end
+
+      it 'generates hidden fields for nested params' do
+        result = helper.hidden_preserve_filter_params
+        expect(result).to include('name="q[g][0][m]"')
+        expect(result).to include('value="or"')
+        expect(result).to include('name="q[g][0][status_eq]"')
+      end
+    end
+
+    context 'when q params contain array values' do
+      before do
+        allow(helper).to receive(:params).and_return(
+          ActionController::Parameters.new(q: { status_in: ['active', 'draft'] })
+        )
+      end
+
+      it 'generates hidden fields for each array value' do
+        result = helper.hidden_preserve_filter_params
+        expect(result.scan('name="q[status_in][]"').count).to eq(2)
+        expect(result).to include('value="active"')
+        expect(result).to include('value="draft"')
+      end
+    end
+  end
+
   describe '#query_builder_fields_json' do
     it 'returns JSON string of available fields' do
       result = helper.query_builder_fields_json(table)
