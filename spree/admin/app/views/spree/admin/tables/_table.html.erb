@@ -15,6 +15,7 @@
       <div class="flex flex-col lg:flex-row gap-3 items-start lg:items-center justify-between">
         <div class="flex gap-2 items-center flex-wrap">
           <%= search_form_for @search, url: url_for, html: { data: { turbo_frame: frame_name, turbo_action: 'advance', controller: 'auto-submit search-clear', auto_submit_delay_value: 300 } } do |f| %>
+            <%= hidden_preserve_filter_params(except_q_keys: [search_param]) %>
             <div class="form-input flex items-center py-0 pr-1 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-blue-500 lg:w-[300px] mr-auto h-[2.125rem] transition-all duration-100 ease-in-out">
               <%= icon "search", class: "mr-4 text-gray-600 shrink-0" %>
               <%= search_field_tag "q[#{search_param}]",
@@ -33,6 +34,7 @@
         <div class="flex gap-2 items-center">
           <% if date_range_param.present? %>
             <%= form_with url: url_for, method: :get, data: { turbo_frame: frame_name, turbo_action: 'advance' }, class: 'h-full' do %>
+              <%= hidden_preserve_filter_params(except_q_keys: ["#{date_range_param}_gt", "#{date_range_param}_lt"]) %>
               <%= render "spree/admin/shared/calendar_range_picker",
                          date_from_input_name: "q[#{date_range_param}_gt]",
                          date_to_input_name: "q[#{date_range_param}_lt]",
@@ -41,7 +43,7 @@
                          css_classes: "btn-light btn-sm dropdown-toggle h-[2.125rem]" %>
             <% end %>
           <% end %>
-          <%= render 'spree/admin/tables/query_builder', table: table, table_key: table_key, frame_name: frame_name %>
+          <%= render 'spree/admin/tables/query_builder', table: table, table_key: table_key, frame_name: frame_name, search_param: search_param, date_range_param: date_range_param %>
           <%= table_sort_dropdown(table, current_sort) %>
           <%= render 'spree/admin/tables/column_selector',
                      table: table,

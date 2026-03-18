@@ -1,4 +1,4 @@
-<%# locals: (table:, table_key:, frame_name:) %>
+<%# locals: (table:, table_key:, frame_name:, search_param: :name_cont, date_range_param: nil) %>
 <% fields_json = query_builder_fields_json(table) %>
 <% operators_json = query_builder_operators_json %>
 <% current_state = params[:query_state] || '{}' %>
@@ -24,6 +24,18 @@
          class="grow flex flex-col justify-between">
 
       <%= form_with url: url_for, method: :get, html: { class: 'grow flex flex-col justify-between' }, data: { turbo_frame: frame_name, turbo_action: 'advance', query_builder_target: 'form', action: 'submit->query-builder#submitForm' } do |f| %>
+        <%# Preserve search, sort, and date range params so applying filters does not wipe them out.
+            Filter params (q[*_eq], etc.) are managed by the query builder JS, so we exclude them. %>
+        <% search_value = params.dig(:q, search_param) %>
+        <%= hidden_field_tag "q[#{search_param}]", search_value if search_value.present? %>
+        <% sort_value = params.dig(:q, :s) %>
+        <%= hidden_field_tag 'q[s]', sort_value if sort_value.present? %>
+        <% if date_range_param.present? %>
+          <% date_from = params.dig(:q, :"#{date_range_param}_gt") %>
+          <% date_to = params.dig(:q, :"#{date_range_param}_lt") %>
+          <%= hidden_field_tag "q[#{date_range_param}_gt]", date_from if date_from.present? %>
+          <%= hidden_field_tag "q[#{date_range_param}_lt]", date_to if date_to.present? %>
+        <% end %>
         <div class="drawer-body">
           <div class="mb-4 flex items-center gap-2 flex-wrap">
             <span class="text-sm text-gray-600">
